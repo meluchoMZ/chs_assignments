@@ -1,0 +1,99 @@
+ipblock my_arm {
+	iptype "armsystem";
+	ipparm "exec=jpegARM";
+}
+
+ipblock armOut(out data : ns(32)) {
+	iptype "armsystemsource";
+	ipparm "core=my_arm";
+	ipparm "address=0x80000000";
+}
+
+ipblock armIn(in data : ns(32)) {
+	iptype "armsystemsink";
+	ipparm "core=my_arm";
+	ipparm "address=0x80000004";
+}
+
+
+dp huffman(	in dataIn : ns(32);
+		out dataOut : ns(32)){
+
+lookup MASKS : ns(16) = {0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535}; 
+
+reg buffer : ns(24); 
+reg nbits : ns(5);
+reg liberado : ns(1);
+reg regOut : ns(32);
+
+sig aligned, newBuffer : ns(24);
+sig nbits2, nbits3, shift1, nb, nbitsOut : ns(5);
+sig masked, bits, mask: ns(16);
+sig inicio, final, ins0, ins1, mas7, mas15, valido : ns(1);
+sig outputBits0, outputBits1, outputBits2, zeros : ns(8);
+sig tres0 : ns(3);
+sig salidaCalculada : ns(32);
+
+always {
+
+	zeros = 0;
+	tres0 = 0;
+	inicio = dataIn[23];
+	final = dataIn[22];
+
+	valido = (dataIn[16:23] == 0) ? 0 : liberado;
+
+	bits = valido ? dataIn[0:15] : 0;
+	nb = valido ? dataIn[16:20] : 0; 
+	mask = MASKS(nb); masked = bits & mask;
+	nbits2 = nbits + nb; nbits3 = 24 - nbits2;
+
+	aligned = masked << nbits3; 
+	newBuffer = buffer | aligned;
+
+	mas7 = (nbits2 & 0x18) ? 1 : 0;
+	mas15 = (nbits2 & 0x10) ? 1 : 0;
+
+	buffer = (inicio | final) ? 0 : mas15 ? (newBuffer[0:7] # zeros # zeros) : mas7 ? (newBuffer[0:15] # zeros) : newBuffer;
+	nbits = (inicio | final) ? 0 : mas15 ? (nbits2 & 0xf) : mas7 ? (nbits2 & 0x7) : nbits2;
+
+	ins0 = (newBuffer[16:23] == 0xff) ? 1 : 0;
+	ins1 = (newBuffer[8:15] == 0xff) ? 1 : 0;
+	outputBits0 = newBuffer[16:23];
+	outputBits1 = ins0 ? zeros : newBuffer[8:15];
+	outputBits2 = ins0 ? newBuffer[8:15] : zeros;
+	nbitsOut = final ? 1 : (mas15 ? (2 + ins0 + ins1) : mas7 ? (1 + ins0) : 0);
+
+	salidaCalculada = valido ? (tres0 # nbitsOut #  outputBits2 # outputBits1 # outputBits0) : regOut;
+	dataOut = salidaCalculada;
+	regOut = salidaCalculada;
+
+	liberado = inicio ? 0 : (dataIn[16:23] == 0) ? 1 : 0;
+
+}	
+
+}
+
+
+
+dp tb_huffman{
+
+sig dataIn, dataOut : ns(32);
+
+use my_arm;
+use huffman(dataIn, dataOut);
+use armOut(dataIn);
+use armIn(dataOut);
+
+always{
+
+}
+
+}
+
+system S {
+
+tb_huffman;
+}
+
+

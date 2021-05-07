@@ -1,0 +1,30 @@
+ipblock my_arm {
+	iptype "armsystem";
+	ipparm "exec=jpegARM";
+}
+
+ipblock armMAC(out d1, d2, d3: tc(32);
+		in q1 : ns(32)) {
+	iptype "armsfu3x1";
+	ipparm "core=my_arm";
+	ipparm "device=0";
+}
+
+
+dp MAC{
+
+  sig mac1, mac2, mac3, macQ1, prod: tc(32);
+
+  use my_arm;
+  use armMAC(mac1, mac2, mac3, macQ1);
+
+  always{
+	prod = mac1 * mac2;
+	macQ1 = prod + mac3;
+  }
+}
+
+system S {
+  MAC;
+}
+

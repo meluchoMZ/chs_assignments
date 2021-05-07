@@ -1,0 +1,69 @@
+ipblock my_arm {
+	iptype "armsystem";
+	ipparm "exec=jpegARM";
+}
+
+ipblock armOut(out data : ns(32)) {
+	iptype "armsystemsource";
+	ipparm "core=my_arm";
+	ipparm "address=0x80000000";
+}
+
+ipblock armIn(in data : ns(32)) {
+	iptype "armsystemsink";
+	ipparm "core=my_arm";
+	ipparm "address=0x80000004";
+}
+
+
+dp RGB_YCbCr(	in dataIn : ns(32);
+		out dataOut : ns(32)){
+
+sig R, G, B : ns(8);
+sig Y, Cb, Cr, zeros : ns(8);
+sig prodY, prodCb, prodCr : ns(24);
+
+
+  always {
+
+	zeros = 0;
+	R = dataIn[0:7];	G = dataIn[8:15];	B = dataIn[16:23];
+
+	prodY = (R * 19595) + (G * 38470) + (B * 7471) + 32768;
+	Y = prodY[16:23];
+
+	prodCb = (B * 32768) - (R * 11059) - (G * 21709) + 8388608 + 32767;
+	Cb = prodCb[16:23];
+
+	prodCr = (R * 32768) - (G * 27439) - (B * 5329) + 8388608 + 32767;
+	Cr = prodCr[16:23];
+
+	dataOut = zeros # Y # Cb # Cr; 
+
+  }	
+
+}
+
+
+
+dp tb_huffman{
+
+sig dataIn, dataOut : ns(32);
+
+use my_arm;
+use RGB_YCbCr(dataIn, dataOut);
+use armOut(dataIn);
+use armIn(dataOut);
+
+always{
+
+}
+
+}
+
+system S {
+
+tb_huffman;
+}
+
+

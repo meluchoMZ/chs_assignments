@@ -1,0 +1,47 @@
+ipblock my_arm {
+ iptype "armsystem";
+ ipparm "exec=jpegARM";
+}
+
+ipblock armOut(out data : ns(32)) {
+ iptype "armsystemsource";
+ ipparm "core=my_arm";
+ ipparm "address=0x80000000";
+}
+
+ipblock armIn(in data : ns(32)) {
+ iptype "armsystemsink";
+ ipparm "core=my_arm";
+ ipparm "address=0x80000004";
+}
+
+
+dp chorrada(	in nadaIn : ns(32);
+		out nadaOut : ns(32)){
+
+	always {
+		nadaOut = nadaIn;
+	}
+
+}
+
+dp tb_chorrada{
+
+	sig dataIn, dataOut : ns(32);
+
+	use my_arm;
+	use chorrada(dataIn, dataOut);
+	use armOut(dataIn);
+	use armIn(dataOut);
+
+	always{
+
+	}
+
+}
+
+system S {
+
+	tb_chorrada;
+}
+
